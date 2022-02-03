@@ -1,0 +1,15 @@
+artifact_uri: file:///home/tomershtein/code/tomerenshtein/TaxiFareModel/mlruns/1/52676124f7344bde8eee918642000110/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: 52676124f7344bde8eee918642000110
+run_uuid: 52676124f7344bde8eee918642000110
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1643911307751
+status: 1
+tags: []
+user_id: unknown
