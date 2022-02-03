@@ -5,14 +5,15 @@ from TaxiFareModel.utils import compute_rmse
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
+from sklearn.svm import SVR
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-
-
+import joblib
 from memoized_property import memoized_property
-
 import mlflow
 from mlflow.tracking import MlflowClient
+from sklearn.model_selection import cross_validate
+
 
 
 class Trainer():
@@ -20,7 +21,7 @@ class Trainer():
     EXPERIMENT_NAME = "[FR][PAR][tomerenshtein] TaxiFare 01"
 
 
-    def __init__(self, X, y):
+    def __init__(self, X, y, model):
         """
             X: pandas DataFrame
             y: pandas Series
@@ -28,6 +29,8 @@ class Trainer():
         self.pipeline = None
         self.X = X
         self.y = y
+        self.model = model
+        self.cv_results = None
 
     def set_pipeline(self):
         """defines the pipeline as a class attribute"""
@@ -43,7 +46,7 @@ class Trainer():
             remainder="drop")
 
         self.pipeline = Pipeline([('preproc', preproc_pipe),
-                        ('linear_model', LinearRegression())])
+                                  ('model', self.model)])
         return self
 
     @memoized_property
@@ -75,6 +78,11 @@ class Trainer():
     def run(self):
         """set and train the pipeline"""
         self.set_pipeline()
+        self.cv_results = cross_validate(self.pipeline, self.X, self.y, cv=3)
+        self.mlflow_log_metric("cross_val_score",
+                               self.cv_results['test_score'].mean())
+        print(self.cv_results['test_score'].mean())
+
         self.pipeline.fit(self.X, self.y)
 
         return self
@@ -88,6 +96,11 @@ class Trainer():
 
         print(rmse)
         return rmse
+
+    def save_model(self):
+        """ Save the trained model into a model.joblib file """
+        joblib.dump(self.pipeline, f'{self.pipeline[1]}.joblib')
+
 
 
 
@@ -105,13 +118,22 @@ if __name__ == "__main__":
     # hold out
     X_train, X_test, y_train, y_test = holdout(X,y)
 
-    # train
-    model = Trainer(X,y)
-    model.run()
 
-    # evaluate
-    model.evaluate(X_test, y_test)
+    for model_type in [LinearRegression(), SVR()]:
 
-    experiment_id = model.mlflow_experiment_id
 
-    print(f"experiment URL: https://mlflow.lewagon.co/#/experiments/{experiment_id}")
+
+        # train
+        model = Trainer(X,y,model_type)
+
+        #run
+        model.run()
+
+        # evaluate
+        model.evaluate(X_test, y_test)
+
+        #save model
+        model.save_model()
+
+experiment_id = model.mlflow_experiment_id
+print(f"experiment URL: https://mlflow.lewagon.co/#/experiments/{experiment_id}")
